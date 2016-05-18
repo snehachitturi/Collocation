@@ -1,0 +1,153 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+This is a temporary script file.
+"""
+
+
+import nltk
+
+# Reads the text document and splits the lines and generate tokens
+def get_tokens_from_file(filename, filter_phrases=[]):
+    lines = []
+    all_tokens = []
+
+    with open(filename) as jobs_file:
+        lines = jobs_file.readlines()
+        for line in lines:
+            if not line:
+                continue
+
+            for filter_phrase in filter_phrases:
+                line = line.replace(filter_phrase, '')
+                line = ' '.join(line.split())
+
+            tokens_in_line = line.split()
+            for token_in_line in tokens_in_line:
+                all_tokens.append(token_in_line.strip())
+            all_tokens.append(line)
+
+    return all_tokens
+#Finds the frequent quad-grams 
+def get_quadgram_occurances(tokens):
+    four_finder = nltk.QuadgramCollocationFinder.from_words(tokens)
+    four_finder.apply_freq_filter(500)
+    temp =[]
+    for quad in four_finder.ngram_fd.items():
+          temp.append(quad)
+    best_guadgrams = [te for te,k in temp]
+    
+    return best_guadgrams,temp
+#Finds frequent tri-grams
+def get_trigram_occurances(tokens):
+    tri_finder = nltk.TrigramCollocationFinder.from_words(tokens)
+    tri_finder.apply_freq_filter(700)
+    temp =[]
+    for tri in tri_finder.ngram_fd.items():
+          temp.append(tri)
+    best_tri_grams = [te for te,k in temp]
+    return best_tri_grams,temp
+#finds frequent bi-grams
+def get_bigram_occurances(tokens):
+    bi_finder = nltk.BigramCollocationFinder.from_words(tokens)
+    bi_finder.apply_freq_filter(253)
+    temp = []    
+    for k,v in bi_finder.ngram_fd.items():
+          temp.append((k,v))
+    temp = sorted(temp, key=lambda tup: tup[1],reverse = True)   
+    best_bi_grams = [te for te,k in temp]
+    return best_bi_grams,temp
+
+#Generates all the collocations and appends them
+def generate_collocations(file):
+    tokens = get_tokens_from_file(file)
+    quad_grams,quad_count =  get_quadgram_occurances(tokens)
+    tri_grams,tri_count = get_trigram_occurances(tokens)
+    bi_grams, bi_count = get_bigram_occurances(tokens)
+    total_collocations_count = []
+    total_collocations_count.append([])
+    total_collocations_count.append([])
+    total_collocations_count.append([]) 
+    
+    total_collocations_count[0].append(quad_count)
+    total_collocations_count[1].append(tri_count)
+    total_collocations_count[2].append(bi_count)
+
+    total_collocations = [];
+    total_collocations.append([])
+    total_collocations.append([])
+    total_collocations.append([])
+    total_collocations[0].append(quad_grams)
+    total_collocations[1].append(tri_grams)
+    total_collocations[2].append(bi_grams)
+    return total_collocations,total_collocations_count
+       
+# do_collocations will compare the previously found collocations with the text
+# and removes the false positives
+def do_collocation(tokens,total_collocations):
+    ngram_count = 4;
+    cntr = 0;
+    while cntr != 3:
+        n_grams1 = nltk.ngrams(tokens, ngram_count)
+        n_grams = [wrd for wrd in n_grams1]
+        
+        matched_words = list( set(total_collocations[cntr][0]) & set(n_grams))
+        #print matched_words        
+        cntr = cntr + 1
+        # combine words
+        if cntr !=3:
+            for word in matched_words:
+                indx1 = tokens.index(word[0])
+                indx2 = tokens.index(word[-1])
+                if (indx2 +1 - indx1) == ngram_count:
+                    del tokens[indx1:indx2+1]
+            
+           
+        ngram_count = ngram_count - 1 
+        if ngram_count == 1:
+            indx_temp1 =[]
+            indx_temp2 =[]
+            for k in range(0,(len(matched_words))):
+                indx1 = tokens.index(matched_words[k][0])
+                indx2 = tokens.index(matched_words[k][1])
+                
+                if indx1!=0  :
+                    indx_temp1.append(indx1)                    
+                if indx2<len(tokens)-1:
+                    indx_temp2.append(indx2)
+                
+            
+            
+            for indx1 in indx_temp1:
+                try:   
+                    del(matched_words[matched_words.index((tokens[indx1-1],tokens[indx1]))])
+                except ValueError:
+                    continue
+            for indx2 in indx_temp2:
+                try:                        
+                    del(matched_words[matched_words.index((tokens[indx2],tokens[indx2+1]))])
+                except ValueError:
+                    continue
+            for word in matched_words:
+                for wrd in word:
+                    del(tokens[tokens.index(wrd)])
+
+                    
+        print matched_words 
+        if ngram_count ==1:            
+            print tokens
+ #Main method        
+if __name__=='__main__':
+    file_name = 'C:/Users/sneha/Downloads/Jobs.txt';
+    total_collocations,total_collocations_count = generate_collocations(file_name)
+    # Read Test Case
+    with open(file_name) as jobs_file:
+        lines = jobs_file.readlines()
+        del(lines[0])
+    for line in lines:
+        print line
+        tokens = line.split()
+        do_collocation(tokens,total_collocations)
+   
+    
